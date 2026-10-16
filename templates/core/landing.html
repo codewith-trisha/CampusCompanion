@@ -1,0 +1,38 @@
+{% extends "app_base.html" %}
+{% block title %}Welcome — CampusCompanion{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto text-center py-12">
+    <div class="mb-8">
+        <p class="eyebrow">Official Academic Portal</p>
+        <h1 class="text-4xl mt-2 font-bold">CampusCompanion for Modern Students</h1>
+        <p class="text-lg mt-3" style="color:var(--muted)">
+            Your intelligent campus assistant for grades, attendance, timetables, assignments, and campus policies.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+        <!-- Student Portal Card -->
+        <div class="panel p-8 text-left">
+            <h2 class="text-2xl mb-2 font-semibold">🎓 Student Portal</h2>
+            <p class="text-sm mb-6" style="color:var(--muted)">
+                Access your personalized dashboard, live course progress, assignments, timetable, and AI academic assistant.
+            </p>
+            <a href="{% url 'login' %}" class="btn-primary inline-block text-center w-full py-3" style="text-decoration:none;">
+                Student Sign In
+            </a>
+        </div>
+
+        <!-- Admin Portal Card -->
+        <div class="panel p-8 text-left" style="background: #fbf8f0;">
+            <h2 class="text-2xl mb-2 font-semibold">🔒 Administration</h2>
+            <p class="text-sm mb-6" style="color:var(--muted)">
+                Secure backend portal for faculty and staff to manage student records, courses, and knowledge base documents.
+            </p>
+            <a href="/secure-management-portal-xyz/" class="pill pill-brass inline-block text-center w-full py-3" style="text-decoration:none; font-weight:600;">
+                Admin Portal Login
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

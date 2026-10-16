@@ -1,0 +1,192 @@
+{% extends "app_base.html" %}
+{% block title %}Dashboard — CampusCompanion{% endblock %}
+
+{% block topbar_user %}
+<div class="topbar-user">
+    <div class="name">{{ profile.user.first_name|default:profile.user.username }}</div>
+    <div class="meta">{{ profile.department }} · Sem {{ profile.current_semester }}</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <div>
+        <p class="eyebrow">Student Record</p>
+        <h1 class="text-3xl mt-1">Hi, {{ profile.user.first_name|default:profile.user.username }} 👋</h1>
+        <p class="text-sm mt-1" style="color:var(--muted)">
+            {{ profile.department }} · Semester {{ profile.current_semester }} · Roll No {{ profile.roll_number }}
+        </p>
+    </div>
+
+    <!-- ==================== STAT ROW ==================== -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="panel">
+            <p class="eyebrow">Credits Earned</p>
+            <p class="stat-num mt-2" style="color:var(--inktext)">{{ earned_credits }}</p>
+        </div>
+        <div class="panel">
+            <p class="eyebrow">Credits Remaining</p>
+            <p class="stat-num mt-2" style="color:#8a6b1f">{{ remaining_credits }}</p>
+        </div>
+        <div class="panel">
+            <p class="eyebrow">Backlogs</p>
+            <p class="stat-num mt-2 {% if failed %}text-red-700{% else %}text-green-700{% endif %}" >{{ failed|length }}</p>
+        </div>
+    </div>
+
+    <!-- ==================== COURSE LISTS ==================== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="panel">
+            <div class="panel-rule"></div>
+            <h2 class="text-lg mb-2">Completed Courses</h2>
+            <div>
+                {% for e in completed %}
+                <div class="list-row">
+                    <span><span class="code">{{ e.course.code }}</span>{{ e.course.title }}</span>
+                    <span class="pill pill-brass">{{ e.grade|default:"—" }}</span>
+                </div>
+                {% empty %}
+                <p class="text-sm" style="color:var(--muted)">None yet</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-rule"></div>
+            <h2 class="text-lg mb-2">Ongoing Courses</h2>
+            <div>
+                {% for e in ongoing %}
+                <div class="list-row">
+                    <span><span class="code">{{ e.course.code }}</span>{{ e.course.title }}</span>
+                    <span class="pill pill-muted">In progress</span>
+                </div>
+                {% empty %}
+                <p class="text-sm" style="color:var(--muted)">None</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TIMETABLE & ASSIGNMENTS SECTION ==================== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Timetable Panel -->
+        <div class="panel">
+            <div class="panel-rule"></div>
+            <h2 class="text-lg mb-2">📅 My Timetable</h2>
+            <div>
+                {% for slot in timetable %}
+                <div class="list-row flex justify-between items-center py-2 border-b" style="border-color: var(--parchment-dark);">
+                    <div>
+                        <strong>{{ slot.get_day_display }}</strong>: {{ slot.course_name }}
+                        <br><small style="color:var(--muted)">{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</small>
+                    </div>
+                    <span class="pill pill-brass">{{ slot.room }}</span>
+                </div>
+                {% empty %}
+                <p class="text-sm" style="color:var(--muted)">No timetable slots scheduled yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Assignments Panel -->
+        <div class="panel">
+            <div class="panel-rule"></div>
+            <h2 class="text-lg mb-2">📝 Assignments</h2>
+            <div>
+                {% for item in assignments %}
+                <div class="list-row flex justify-between items-center py-2 border-b" style="border-color: var(--parchment-dark);">
+                    <div>
+                        <span class="code">{{ item.course_code }}</span> {{ item.title }}
+                        <br><small style="color:var(--muted)">Due: {{ item.due_date|date:"M d, Y H:i" }}</small>
+                    </div>
+                    {% if item.is_submitted %}
+                        <span class="pill" style="background:#e6f4ea; color:#137333;">Submitted</span>
+                    {% else %}
+                        <span class="pill" style="background:#fef7e0; color:#b06000;">Pending</span>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-sm" style="color:var(--muted)">No assignments tracked yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== CHAT WIDGET (AI + RAG) ==================== -->
+    <div class="panel">
+        <div class="flex justify-between items-center mb-1">
+            <div>
+                <h2 class="text-lg mt-1">Ask the CampusCompanion</h2>
+            </div>
+            <button id="new-chat-btn" class="pill pill-muted" style="cursor:pointer;border:none;">New chat</button>
+        </div>
+
+        <div id="chat-window" class="rounded-lg h-80 overflow-y-auto p-4 mb-3"
+             style="border:1px solid var(--parchment-dark); background:#fffdf8;"></div>
+
+        <form id="chat-form" class="flex gap-3">
+            <input id="chat-input" type="text" autocomplete="off" placeholder="Type your question..."
+                   class="field-input flex-1">
+            <button type="submit" class="btn-primary">Send</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const chatWindow = document.getElementById("chat-window");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+const newChatBtn = document.getElementById("new-chat-btn");
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
+
+function addMessage(text, sender) {
+  const bubble = document.createElement("div");
+  bubble.className = sender === "user" ? "text-right" : "text-left";
+  bubble.style.marginBottom = "8px";
+  const bubbleStyle = sender === "user"
+    ? "background:var(--ink);color:var(--cream);"
+    : "background:#fbf8f0;color:var(--inktext);border:1px solid var(--parchment-dark);";
+  bubble.innerHTML = `<span style="display:inline-block;padding:8px 12px;border-radius:8px;font-size:13.5px;${bubbleStyle}">${text}</span>`;
+  chatWindow.appendChild(bubble);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+newChatBtn.addEventListener("click", async () => {
+  await fetch("{% url 'chat_reset' %}", {
+    method: "POST",
+    headers: { "X-CSRFToken": getCookie("csrftoken") },
+  });
+  chatWindow.innerHTML = "";
+});
+
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = chatInput.value.trim();
+  if (!message) return;
+  addMessage(message, "user");
+  chatInput.value = "";
+  addMessage("Thinking...", "bot");
+
+  try {
+    const res = await fetch("{% url 'chat_api' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    chatWindow.removeChild(chatWindow.lastChild);
+    addMessage(data.reply || data.error || "Something went wrong.", "bot");
+  } catch (err) {
+    chatWindow.removeChild(chatWindow.lastChild);
+    addMessage("Network error — please try again.", "bot");
+  }
+});
+</script>
+{% endblock %}
